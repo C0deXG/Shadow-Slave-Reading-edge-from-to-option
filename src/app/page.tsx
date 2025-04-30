@@ -20,6 +20,92 @@ export default function Home() {
   const [to, setTo] = useState(0);
   const [contentHTML, setContentHTML] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Separate effect for loading chapters
+  useEffect(() => {
+    if (!isInitialized || !book || !spineItems) return;
+
+    const loadInitialChapters = async () => {
+      const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
+      const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
+      const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
+
+      if (savedHTML && savedFrom && savedTo) {
+        console.log('Loading saved state from localStorage');
+        setContentHTML(savedHTML);
+        setFrom(parseInt(savedFrom));
+        setTo(parseInt(savedTo));
+      } else {
+        console.log('No saved state, loading first two chapters by default');
+        const defaultFrom = 0;
+        const defaultTo = Math.min(1, spineItems.length - 1);
+        setFrom(defaultFrom);
+        setTo(defaultTo);
+        await loadChapters();
+      }
+    };
+
+    loadInitialChapters();
+  }, [isInitialized, book, spineItems]);
+
+  // Initialize book and spine items
+  useEffect(() => {
+    let mounted = true;
+    
+    async function initializeBook() {
+      if (!mounted) return;
+      
+      try {
+        console.log('Loading EPUB file...');
+        setIsLoading(true);
+        
+        const b = ePub('/trimmed_book.epub', {
+          openAs: 'epub',
+          requestMethod: async (url: string) => {
+            try {
+              const staticPath = url.startsWith('/') ? url : `/${url}`;
+              const response = await fetch(staticPath);
+              if (response.ok) return response.blob();
+              
+              const fallbackResponse = await fetch(url);
+              return fallbackResponse.blob();
+            } catch (error) {
+              console.error('Error loading resource:', error);
+              const fullUrl = new URL(url, window.location.href).href;
+              const finalResponse = await fetch(fullUrl);
+              return finalResponse.blob();
+            }
+          },
+          requestCredentials: 'same-origin'
+        } as any);
+
+        await b.ready;
+        if (!mounted) return;
+        
+        console.log('EPUB loaded, processing spine...');
+        setBook(b);
+
+        const items = (b.spine as any).spineItems;
+        if (!items || items.length === 0) {
+          throw new Error('No spine items found in the EPUB file');
+        }
+
+        console.log(`Found ${items.length} chapters`);
+        setSpineItems(items);
+        setIsInitialized(true);
+      } catch (err) {
+        console.error('Error initializing book:', err);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    initializeBook();
+    return () => { mounted = false; };
+  }, []); // No dependencies for initial load
 
   const loadChapters = useCallback(async () => {
     if (!book || !spineItems) {
@@ -71,10 +157,6 @@ export default function Home() {
         scripts[i].remove();
       }
 
-      // Remove existing titles/headers to prevent duplicates
-      const existingTitles = div.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      existingTitles.forEach(title => title.remove());
-
       // Convert divs to paragraphs where appropriate
       const divs = div.getElementsByTagName('div');
       for (let i = divs.length - 1; i >= 0; i--) {
@@ -82,8 +164,15 @@ export default function Home() {
         if (!div.querySelector('div, p')) {
           const p = document.createElement('p');
           p.innerHTML = div.innerHTML;
+          p.setAttribute('role', 'text');
           div.parentNode?.replaceChild(p, div);
         }
+      }
+
+      // Add role="text" to all paragraphs
+      const paragraphs = div.getElementsByTagName('p');
+      for (let i = 0; i < paragraphs.length; i++) {
+        paragraphs[i].setAttribute('role', 'text');
       }
 
       return div.innerHTML;
@@ -96,8 +185,8 @@ export default function Home() {
     await new Promise(resolve => setTimeout(resolve, 50));
     
     let combinedHTML = `
-      <article class="book-content" lang="en">
-        <main class="book-main">
+      <article class="book-content" role="article" aria-label="Book content">
+        <div class="book-main" role="main">
     `;
     console.log('Loading chapters from', from, 'to', to);
 
@@ -211,11 +300,11 @@ export default function Home() {
           const chapterNum = index + 1;
           
           combinedHTML += `
-            <section class="chapter" id="chapter-${chapterNum}">
+            <section class="chapter" role="region" aria-label="Chapter ${chapterNum}" id="chapter-${chapterNum}">
               <header>
-                <h2>Chapter ${chapterNum}</h2>
+                <h2 role="heading" aria-level="2">Chapter ${chapterNum}</h2>
               </header>
-              <div class="chapter-content">
+              <div class="chapter-content" role="article">
                 ${structuredHTML}
               </div>
             </section>
@@ -234,7 +323,7 @@ export default function Home() {
     }
 
     combinedHTML += `
-        </main>
+        </div>
       </article>
     `;
 
@@ -255,107 +344,6 @@ export default function Home() {
       console.error('Error saving to localStorage:', error);
     }
   }, [book, spineItems, from, to]);
-
-  useEffect(() => {
-    let mounted = true;
-    
-    async function initializeBook() {
-      try {
-        console.log('Loading EPUB file...');
-        setIsLoading(true);
-        
-        // Add a small delay to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Initialize book with explicit options for mobile and static deployments
-        const b = ePub('/trimmed_book.epub', {
-          openAs: 'epub',
-          requestMethod: async (url: string) => {
-            try {
-              // First try to load from the static deployment path
-              const staticPath = url.startsWith('/') ? url : `/${url}`;
-              const response = await fetch(staticPath);
-              if (response.ok) {
-                return response.blob();
-              }
-              // Fallback to relative path
-              const fallbackResponse = await fetch(url);
-              return fallbackResponse.blob();
-            } catch (error) {
-              console.error('Error loading resource:', error);
-              // Try one more time with the full URL
-              const fullUrl = new URL(url, window.location.href).href;
-              const finalResponse = await fetch(fullUrl);
-              return finalResponse.blob();
-            }
-          },
-          requestCredentials: 'same-origin'
-        } as any);
-
-        // Wait for book to be ready
-        await b.ready;
-        
-        if (!mounted) return;
-        
-        console.log('EPUB loaded, processing spine...');
-        setBook(b);
-
-        // Get spine items with retry mechanism
-        let items;
-        try {
-          items = (b.spine as any).spineItems;
-          if (!items || items.length === 0) {
-            // Try alternative method
-            items = await b.loaded.spine;
-          }
-        } catch (error) {
-          console.error('Error getting spine items:', error);
-          items = [];
-        }
-        
-        if (!items || items.length === 0) {
-          throw new Error('No spine items found in the EPUB file');
-        }
-
-        console.log(`Found ${items.length} chapters`);
-        setSpineItems(items);
-        
-        // Load saved state or set defaults
-        const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
-        const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
-        const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
-
-        if (savedHTML && savedFrom && savedTo) {
-          console.log('Loading saved state from localStorage');
-          setContentHTML(savedHTML);
-          setFrom(savedFrom ? parseInt(savedFrom) : 0);
-          setTo(savedTo ? parseInt(savedTo) : 0);
-        } else {
-          console.log('No saved state, loading first two chapters by default');
-          const defaultFrom = 0;
-          const defaultTo = Math.min(1, items.length - 1);
-          
-          setFrom(defaultFrom);
-          setTo(defaultTo);
-          
-          // Load initial chapters immediately
-          loadChapters();
-        }
-      } catch (err) {
-        console.error('Error initializing book:', err);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    initializeBook();
-
-    return () => {
-      mounted = false;
-    };
-  }, [loadChapters]);
 
   // Save the current state to localStorage when component unmounts or tab is closed
   useEffect(() => {
@@ -381,12 +369,12 @@ export default function Home() {
   }, [contentHTML, from, to]);
 
   return (
-    <div className="epub-reader" lang="en">
+    <div className="epub-reader" lang="en" role="document">
       <header className="reader-header">
         <h1 className="sr-only">eBook Reader</h1>
       </header>
       {isLoading ? (
-        <div className="loading-indicator">Loading book...</div>
+        <div className="loading-indicator" role="alert" aria-live="polite">Loading book...</div>
       ) : (
         <ThemeProvider
           from={from}
@@ -404,13 +392,15 @@ export default function Home() {
             <article 
               className="reader-content"
               role="article"
+              aria-label="Current chapters"
             >
               <div
                 key={`content-${from}-${to}`}
                 className="reading-area"
                 lang="en"
                 role="document"
-                aria-label="Current chapter content"
+                aria-label="Chapter text"
+                data-edge-read-aloud="true"
                 dangerouslySetInnerHTML={{ __html: contentHTML }}
               />
             </article>
