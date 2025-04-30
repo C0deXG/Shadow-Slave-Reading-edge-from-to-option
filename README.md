@@ -69,6 +69,26 @@ When you've finished listening to chapters and want to load new ones:
 - Compatible with Microsoft Edge's read-aloud functionality
 - Persistent storage of reading progress
 
+## Deploying to Vercel
+
+This application can be deployed to Vercel. If you encounter build errors, make sure to:
+
+1. Include the `vercel.json` file in your repository with the following configuration:
+   ```json
+   {
+     "buildCommand": "next build",
+     "outputDirectory": ".next",
+     "installCommand": "npm install",
+     "framework": "nextjs"
+   }
+   ```
+
+2. Ensure your ePub file (`trimmed_book.epub`) is included in the `/public` directory before deploying.
+
+3. If you get an error about "No Output Directory named 'dist' found", this is because Vercel is looking for the wrong output directory. The configuration above fixes this by specifying `.next` as the output directory.
+
+4. Note that Edge runtime may disable static generation. This is expected behavior when using the edge runtime as specified in the deployment logs.
+
 ## Contributing
 
 If you need more features or find any issues, please open an issue or contribute to the project.

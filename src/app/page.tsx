@@ -67,44 +67,44 @@ export default function Home() {
     }
   }, []);
 
-  // Function to safely extract HTML content
-  const extractContentHTML = (content: any): string => {
-    if (!content) return '';
-    
-    try {
-      // Try to get innerHTML from body
-      if (content.body && content.body.innerHTML) {
-        return content.body.innerHTML;
-      }
-      
-      // Try to get from document.body if content is a document
-      if (content.document && content.document.body) {
-        return content.document.body.innerHTML;
-      }
-      
-      // If content is already HTML string
-      if (typeof content === 'string') {
-        return content;
-      }
-      
-      // If content has toString method, try that
-      if (content.toString && typeof content.toString === 'function') {
-        return content.toString();
-      }
-      
-      // Fallback: Return empty string
-      return '';
-    } catch (e) {
-      console.error('Error extracting HTML content:', e);
-      return '';
-    }
-  };
-
   const loadChapters = useCallback(async () => {
     if (!book || !spineItems) {
       console.error('Book or spine items not initialized');
       return;
     }
+    
+    // Function to safely extract HTML content - moved inside useCallback to fix linting warning
+    const extractContentHTML = (content: any): string => {
+      if (!content) return '';
+      
+      try {
+        // Try to get innerHTML from body
+        if (content.body && content.body.innerHTML) {
+          return content.body.innerHTML;
+        }
+        
+        // Try to get from document.body if content is a document
+        if (content.document && content.document.body) {
+          return content.document.body.innerHTML;
+        }
+        
+        // If content is already HTML string
+        if (typeof content === 'string') {
+          return content;
+        }
+        
+        // If content has toString method, try that
+        if (content.toString && typeof content.toString === 'function') {
+          return content.toString();
+        }
+        
+        // Fallback: Return empty string
+        return '';
+      } catch (e) {
+        console.error('Error extracting HTML content:', e);
+        return '';
+      }
+    };
     
     // Clear existing content first
     setContentHTML('');
@@ -258,7 +258,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [book, spineItems, from, to, extractContentHTML]);
+  }, [book, spineItems, from, to]);
 
   // Save the current state to localStorage when component unmounts or tab is closed
   useEffect(() => {
