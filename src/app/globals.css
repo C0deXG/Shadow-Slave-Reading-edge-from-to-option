@@ -1,26 +1,908 @@
-@import "tailwindcss";
-
+/* Base styles */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --book-text-color: #2c3338;
+  --book-bg-color: #f8f7f4;
+  --book-line-height: 1.8;
+  --book-font-size: 1.25rem;
+  --book-side-padding: clamp(1rem, 5vw, 3rem);
+  --chapter-spacing: 4rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Light theme variables */
+.light {
+  --book-text-color: #2c3338;
+  --book-bg-color: #f8f7f4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark theme variables */
+.dark {
+  --book-text-color: #e1e1e1;
+  --book-bg-color: #1a1a1a;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--book-bg-color);
+  color: var(--book-text-color);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Reading container styles */
+.reading-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+/* Mobile-first approach */
+.reading-area {
+  padding: 1rem 0.5rem 8rem 0.5rem; /* Increased bottom padding for mobile controls */
+  font-size: 16px; /* Base font size for mobile */
+}
+
+@media (min-width: 768px) {
+  .reading-area {
+    padding: 1rem 2rem 6rem 2rem;
+    font-size: var(--book-font-size);
+  }
+}
+
+/* Chapter styles */
+.chapter-block {
+  padding: calc(var(--chapter-spacing) / 2) calc(var(--book-side-padding) / 2);
+}
+
+@media (min-width: 768px) {
+  .chapter-block {
+    padding: var(--chapter-spacing) var(--book-side-padding);
+  }
+}
+
+/* Chapter title styles */
+.custom-chapter-title {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin: 1rem 0;
+  padding: 0 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .custom-chapter-title {
+    font-size: 2rem;
+    margin: 1.5rem 0;
+    padding: 0;
+  }
+}
+
+/* Mobile Navigation Controls */
+.reading-controls {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 2rem);
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Dark mode for reading controls */
+.reading-controls.dark-mode {
+  background: rgba(28, 28, 28, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e1e1e1;
+}
+
+/* Controls header - always visible */
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode .controls-header {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Expand/collapse toggle */
+.expand-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.dark-mode .expand-toggle {
+  color: #e1e1e1;
+}
+
+.expand-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .expand-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Theme toggle */
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.dark-mode .theme-toggle {
+  color: #e1e1e1;
+}
+
+.theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark-mode .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Controls content - collapsed by default on mobile */
+.controls-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.reading-controls.expanded .controls-content {
+  max-height: 300px;
+  padding: 1rem;
+}
+
+/* Chapter controls */
+.chapter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+/* Select wrapping container */
+.select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.select-wrap label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.dark-mode .select-wrap label {
+  color: #aaa;
+}
+
+/* Chapter select inputs */
+.chapter-select {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.03);
+  color: #333;
+  transition: all 0.2s;
+}
+
+.dark-mode .chapter-select {
+  background-color: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e1e1e1;
+}
+
+.chapter-select:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .chapter-select:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.chapter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Load button */
+.load-button {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.load-button:hover {
+  background-color: #0060df;
+}
+
+.load-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Medium screens and above - horizontal layout */
+@media (min-width: 768px) {
+  .reading-controls {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    max-width: 700px;
+  }
+  
+  .controls-header {
+    width: auto;
+    border-bottom: none;
+    padding: 0;
+  }
+  
+  .expand-toggle {
+    display: none; /* No need for expand toggle on desktop */
+  }
+  
+  .controls-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-height: none;
+    flex: 1;
+    padding: 0 0.5rem;
+  }
+  
+  .chapter-controls {
+    flex-direction: row;
+    margin-bottom: 0;
+    flex: 1;
+    gap: 1rem;
+  }
+  
+  .select-wrap {
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+  }
+  
+  .select-wrap label {
+    white-space: nowrap;
+    margin-right: 0.5rem;
+  }
+  
+  .chapter-select {
+    padding: 0.5rem 1rem;
+    flex: 1;
+  }
+  
+  .load-button {
+    width: auto;
+    padding: 0.5rem 1.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* Make From and To fields appear side-by-side on all screen sizes */
+@media (max-width: 767px) {
+  .chapter-controls {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  
+  .select-wrap {
+    flex: 0 0 48%; /* Each takes up roughly half the width minus gap */
+    max-width: 48%;
+  }
+  
+  .load-button {
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+  
+  .reading-controls.expanded .controls-content {
+    padding: 1rem;
+  }
+}
+
+/* Fix specifically for exactly 767px width */
+@media (width: 767px) {
+  .reading-controls {
+    max-width: 96%;
+    padding: 0.5rem;
+  }
+  
+  .controls-header {
+    width: auto;
+    border-bottom: none;
+  }
+  
+  .expand-toggle {
+    display: flex; /* Ensure the expand toggle is visible */
+  }
+  
+  .controls-content {
+    max-height: 0;
+    padding: 0;
+  }
+  
+  .reading-controls.expanded .controls-content {
+    max-height: 300px;
+    padding: 1rem;
+    width: 100%;
+  }
+  
+  /* Keep From and To side by side */
+  .chapter-controls {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  
+  .select-wrap {
+    flex: 0 0 48%; /* Each takes up roughly half the width minus gap */
+    max-width: 48%;
+  }
+  
+  .chapter-select {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+  
+  /* Load button takes full width below the selects */
+  .load-button {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Add a new breakpoint for intermediate screens to fix the disappearing controls issue */
+@media (min-width: 641px) and (max-width: 766px) {
+  .reading-controls {
+    padding: 0.5rem;
+    max-width: 600px;
+  }
+  
+  .controls-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .expand-toggle {
+    display: flex; /* Make sure expand toggle is visible on this size */
+  }
+  
+  .controls-content {
+    width: 100%;
+  }
+  
+  .reading-controls.expanded .controls-content {
+    padding: 1rem;
+  }
+}
+
+/* Small screens specific adjustments */
+@media (max-width: 640px) {
+  .reading-controls {
+    width: calc(100% - 2rem);
+    border-radius: 12px;
+  }
+  
+  .controls-header {
+    padding: 0.75rem;
+  }
+  
+  .expand-toggle {
+    display: flex; /* Ensure expand button is visible on small screens */
+  }
+  
+  .reading-controls.expanded .controls-content {
+    padding: 1rem;
+  }
+}
+
+/* Large screens - even more space between elements */
+@media (min-width: 1024px) {
+  .reading-controls {
+    max-width: 900px;
+    padding: 0.75rem 1rem;
+  }
+  
+  .chapter-controls {
+    gap: 2rem;
+  }
+}
+
+/* Separator styling */
+.separator {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .separator {
+    display: block;
+    width: 1px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 0 0.5rem;
+  }
+}
+
+/* Chapter content optimization for mobile */
+.chapter-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  padding: 0 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .chapter-content {
+    font-size: var(--book-font-size);
+    line-height: var(--book-line-height);
+    padding: 0;
+  }
+}
+
+/* Ensure text is readable on mobile */
+.chapter-content p {
+  margin-bottom: 1rem;
+  text-align: left; /* Better for mobile reading */
+}
+
+@media (min-width: 768px) {
+  .chapter-content p {
+    text-align: justify;
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Add smooth touch scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent horizontal scrolling on mobile */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Chapter navigation text */
+.chapter-nav {
+  font-size: 0.875rem;
+  color: #666;
+  letter-spacing: 0.02em;
+  margin-bottom: 3rem;
+  display: flex;
+  justify-content: space-between;
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.chapter-nav span {
+  text-transform: uppercase;
+}
+
+/* Chapter title styles */
+.chapter-title, 
+.text-2xl {
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, serif;
+  font-size: 2rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  margin-bottom: 2rem !important;
+  margin-top: 2rem !important;
+  color: var(--book-text-color) !important;
+  display: block !important;
+}
+
+/* Remove the display: none from h2 */
+.chapter-block h1,
+.chapter-block h2:not(.chapter-title) {
+  display: none;
+}
+
+/* Chapter text styles - Apple Books style */
+.chapter-block p {
+  font-family: "New York", ui-serif, Georgia, "Times New Roman", Times, serif;
+  font-size: var(--book-font-size);
+  line-height: var(--book-line-height);
+  margin-bottom: 1.5rem;
+  color: var(--book-text-color);
+  text-align: justify;
+  max-width: 45em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Enhanced drop cap like Apple Books */
+.chapter-block p:first-of-type::first-letter {
+  float: left;
+  font-size: 4.5rem;
+  line-height: 0.8;
+  padding-right: 0.5rem;
+  padding-top: 0.1rem;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, serif;
+  font-weight: 300;
+  color: #007AFF;
+}
+
+/* Remove overly aggressive hiding - only hide specific headings */
+.chapter-block h1:not(.custom-chapter-title),
+.chapter-block h2:not(.custom-chapter-title),
+.chapter-block h3:not(.custom-chapter-title),
+.chapter-block header:not(.chapter-title-container) {
+  display: none;
+}
+
+/* Make sure chapter content is visible */
+.chapter-content {
+  display: block !important;
+  max-width: 45em;
+  margin: 0 auto;
+  padding: 0 var(--book-side-padding);
+}
+
+/* Custom chapter title styling */
+.chapter-title-container {
+  display: block;
+  margin: 2rem 0 3rem 0;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.chapter-divider {
+  height: 2px;
+  background: linear-gradient(to right, transparent, #007AFF, transparent);
+  width: 50%;
+  margin: 1rem auto 2rem auto;
+  display: block;
+}
+
+/* Reading controls - Updated Vercel style */
+.reading-controls button {
+  background: transparent;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  color: var(--book-text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reading-controls button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.reading-controls button.active {
+  background: var(--book-text-color);
+  color: var(--book-bg-color);
+}
+
+.reading-controls .separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 0.25rem;
+}
+
+/* Theme toggle button */
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Progress bar */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #007AFF;
+  transition: width 0.3s ease;
+}
+
+/* Typography adjustments */
+.chapter-block blockquote {
+  border-left: 3px solid #007AFF;
+  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+  font-style: italic;
+  color: #4a4a4a;
+}
+
+.chapter-block pre,
+.chapter-block code {
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+  font-size: 0.9em;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --book-text-color: #e1e1e1;
+    --book-bg-color: #1a1a1a;
+  }
+
+  .chapter-block {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .chapter-nav {
+    color: #999;
+  }
+
+  .reading-controls {
+    background: rgba(28, 28, 28, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .reading-controls button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .reading-controls .separator {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .chapter-block pre,
+  .chapter-block code {
+    background: #363636;
+    color: #e1e1e1;
+  }
+
+  .chapter-title {
+    color: var(--book-text-color);
+  }
+
+  .chapter-block p:first-of-type::first-letter {
+    color: #0A84FF;
+  }
+
+  .custom-chapter-title {
+    color: #0A84FF;
+  }
+  
+  .chapter-divider {
+    background: linear-gradient(to right, transparent, #0A84FF, transparent);
+  }
+}
+
+/* Add smooth page transitions */
+.chapter-block {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Chapter Selection UI */
+.chapter-selection {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 0.75rem;
+  border-radius: 9999px;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.select-wrapper label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--book-text-color);
+}
+
+.chapter-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--book-text-color);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.chapter-select:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.chapter-select:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.load-button {
+  background: var(--book-text-color);
+  color: var(--book-bg-color);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-button:hover {
+  opacity: 0.9;
+}
+
+/* Reading Area */
+.reading-area {
+  padding: 1rem 0 6rem 0;
+}
+
+/* Chapter Navigation */
+.chapter-nav {
+  font-size: 1.125rem;
+  color: #666;
+  letter-spacing: 0.02em;
+  margin-bottom: 2rem;
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .chapter-selection {
+    background: rgba(28, 28, 28, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .chapter-select:hover,
+  .chapter-select:focus {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .chapter-nav {
+    color: #999;
+  }
+}
+
+.chapter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--book-text-color);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.chapter-select:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.chapter-select:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.load-button {
+  background: var(--book-text-color);
+  color: var(--book-bg-color);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-button:hover {
+  opacity: 0.9;
+}
+
+.chapter-select:disabled,
+.load-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chapter-select:disabled:hover,
+.load-button:disabled:hover {
+  background: transparent;
+  opacity: 0.5;
+}
+
+/* Loading message */
+.loading-message {
+  color: var(--book-text-color);
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
 }

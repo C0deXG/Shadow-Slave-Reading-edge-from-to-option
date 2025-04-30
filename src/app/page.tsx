@@ -1,103 +1,310 @@
-import Image from "next/image";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import ePub from 'epubjs';
+import ThemeProvider from './components/ThemeProvider';
+
+// Constants for localStorage keys
+const STORAGE_KEYS = {
+  CONTENT: 'epubReaderContent',
+  FROM: 'epubReaderFrom',
+  TO: 'epubReaderTo',
+  LAST_POSITION: 'epubReaderLastPosition'
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [book, setBook] = useState<any>(null);
+  const [spineItems, setSpineItems] = useState<any[]>([]);
+  const [from, setFrom] = useState(0);
+  const [to, setTo] = useState(0);
+  const [contentHTML, setContentHTML] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  useEffect(() => {
+    try {
+      console.log('Loading EPUB file...');
+      // Use custom options to better handle non-standard EPUB files
+      const b = ePub('/trimmed_book.epub');
+      setBook(b);
+
+      b.ready.then(() => {
+        try {
+          console.log('EPUB loaded, processing spine...');
+          const items = (b.spine as any).spineItems;
+          console.log('Spine items:', items);
+          
+          if (items && items.length > 0) {
+            console.log(`Found ${items.length} chapters`);
+            setSpineItems(items);
+            
+            // Load from localStorage if available, otherwise use defaults
+            const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
+            const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
+            const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
+
+            if (savedHTML) {
+              console.log('Loading saved state from localStorage');
+              setContentHTML(savedHTML);
+              setFrom(savedFrom ? parseInt(savedFrom) : 0);
+              setTo(savedTo ? parseInt(savedTo) : 0);
+            } else {
+              // Set default values if no saved state
+              console.log('No saved state, using defaults');
+              setFrom(0);
+              setTo(items.length > 0 ? Math.min(2, items.length - 1) : 0); // Default to first 3 chapters or less
+            }
+          } else {
+            console.error('No spine items found in the EPUB file');
+          }
+        } catch (err) {
+          console.error('Error processing spine:', err);
+        }
+      }).catch(err => {
+        console.error('EPUB ready promise failed:', err);
+      });
+    } catch (err) {
+      console.error('Error loading EPUB file:', err);
+    }
+  }, []);
+
+  // Function to safely extract HTML content
+  const extractContentHTML = (content: any): string => {
+    if (!content) return '';
+    
+    try {
+      // Try to get innerHTML from body
+      if (content.body && content.body.innerHTML) {
+        return content.body.innerHTML;
+      }
+      
+      // Try to get from document.body if content is a document
+      if (content.document && content.document.body) {
+        return content.document.body.innerHTML;
+      }
+      
+      // If content is already HTML string
+      if (typeof content === 'string') {
+        return content;
+      }
+      
+      // If content has toString method, try that
+      if (content.toString && typeof content.toString === 'function') {
+        return content.toString();
+      }
+      
+      // Fallback: Return empty string
+      return '';
+    } catch (e) {
+      console.error('Error extracting HTML content:', e);
+      return '';
+    }
+  };
+
+  const loadChapters = useCallback(async () => {
+    if (!book || !spineItems) {
+      console.error('Book or spine items not initialized');
+      return;
+    }
+    
+    // Clear existing content first
+    setContentHTML('');
+    
+    // Small delay to ensure DOM is cleared
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    let combinedHTML = '';
+    console.log('Loading chapters from', from, 'to', to);
+
+    // Initialize rendition if it doesn't exist
+    if (!book.rendition) {
+      try {
+        // Create a hidden container for rendition
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.opacity = '0';
+        container.style.pointerEvents = 'none';
+        container.style.width = '100%';
+        container.style.height = '100px';
+        document.body.appendChild(container);
+        
+        // Initialize rendition
+        book.rendition = book.renderTo(container, {
+          width: '100%',
+          height: '100px',
+          ignoreClass: 'epub-container'
+        });
+        
+        await book.rendition.display();
+        console.log('Rendition initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize rendition:', error);
+      }
+    }
+
+    // Get all sections that need to be loaded
+    const sectionsToLoad = [];
+    for (let i = from; i <= to && i < spineItems.length; i++) {
+      sectionsToLoad.push({
+        index: i,
+        item: spineItems[i]
+      });
+    }
+
+    // Load each section from the EPUB
+    for (const { index, item } of sectionsToLoad) {
+      try {
+        console.log(`Processing chapter ${index}:`, {
+          href: item.href,
+          title: item.title,
+          label: item.label
+        });
+
+        let chapterHTML = '';
+        let chapterTitle = item.title || item.label || ``;
+
+        // Method 1: Try using book.rendition.display() first
+        try {
+          if (book.rendition) {
+            console.log(`Using rendition to display chapter ${index}`);
+            const rendered = await book.rendition.display(item.href);
+            
+            if (rendered) {
+              chapterHTML = extractContentHTML(rendered);
+              console.log(`Successfully extracted content using rendition for chapter ${index}`);
+            }
+          }
+        } catch (renditionError) {
+          console.warn(`Rendition display failed for chapter ${index}:`, renditionError);
+        }
+
+        // Method 2: Try using direct spine access if rendition failed
+        if (!chapterHTML) {
+          try {
+            console.log(`Using spine access for chapter ${index}`);
+            const section = await book.spine.get(item.href);
+            
+            if (section) {
+              const content = await section.load(book.load.bind(book));
+              
+              if (content) {
+                chapterHTML = extractContentHTML(content);
+                // Try to get title from content if not already set
+                if (!chapterTitle && content.getElementsByTagName && content.getElementsByTagName('title').length > 0) {
+                  chapterTitle = content.getElementsByTagName('title')[0].textContent || chapterTitle;
+                }
+                console.log(`Successfully extracted content using spine for chapter ${index}`);
+              }
+            }
+          } catch (spineError) {
+            console.warn(`Spine access failed for chapter ${index}:`, spineError);
+          }
+        }
+
+        // Method 3: Try directly accessing the resource
+        if (!chapterHTML) {
+          try {
+            console.log(`Using direct resource access for chapter ${index}`);
+            const url = item.href;
+            const data = await book.resources.load(url);
+            
+            if (data) {
+              // Parse HTML string
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(data, 'text/html');
+              chapterHTML = doc.body.innerHTML;
+              console.log(`Successfully extracted content using resource for chapter ${index}`);
+            }
+          } catch (resourceError) {
+            console.warn(`Resource access failed for chapter ${index}:`, resourceError);
+          }
+        }
+
+        // If we got content, add it to our combined HTML
+        if (chapterHTML) {
+          const formattedTitle = `<h2 class="chapter-title">${chapterTitle}</h2>`;
+          
+          combinedHTML += `
+            <div class="chapter" data-chapter="${index}">
+              ${formattedTitle}
+              ${chapterHTML}
+            </div>
+          `;
+          
+          console.log(`Successfully processed chapter ${index}`);
+        } else {
+          console.error(`Failed to load content for chapter ${index} after trying all methods`);
+        }
+      } catch (error) {
+        console.error(`Error processing chapter ${index}:`, {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+      }
+    }
+
+    // Update state with new content
+    setContentHTML(combinedHTML);
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem(STORAGE_KEYS.CONTENT, combinedHTML);
+      localStorage.setItem(STORAGE_KEYS.FROM, from.toString());
+      localStorage.setItem(STORAGE_KEYS.TO, to.toString());
+      
+      // Also save the current time to know when this content was cached
+      localStorage.setItem(STORAGE_KEYS.LAST_POSITION, new Date().toISOString());
+      
+      console.log('Successfully saved content to localStorage for future visits');
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  }, [book, spineItems, from, to, extractContentHTML]);
+
+  // Save the current state to localStorage when component unmounts or tab is closed
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        if (contentHTML) {
+          localStorage.setItem(STORAGE_KEYS.CONTENT, contentHTML);
+          localStorage.setItem(STORAGE_KEYS.FROM, from.toString());
+          localStorage.setItem(STORAGE_KEYS.TO, to.toString());
+          localStorage.setItem(STORAGE_KEYS.LAST_POSITION, new Date().toISOString());
+        }
+      } catch (e) {
+        console.error('Error saving state before unload:', e);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      handleBeforeUnload(); // Also save when component unmounts
+    };
+  }, [contentHTML, from, to]);
+
+  return (
+    <div className="min-h-screen" role="main">
+      <ThemeProvider
+        from={from}
+        to={to}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        spineItems={spineItems}
+        onLoadChapters={loadChapters}
+      >
+        <div
+          key={`content-${from}-${to}`}
+          className="reading-area"
+          role="article"
+          aria-live="polite"
+          aria-atomic="true"
+          dangerouslySetInnerHTML={{ __html: contentHTML }}
+        />
+      </ThemeProvider>
     </div>
   );
 }
+
+export const dynamic = 'force-static';
+export const runtime = 'edge';
