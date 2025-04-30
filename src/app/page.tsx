@@ -21,86 +21,6 @@ export default function Home() {
   const [contentHTML, setContentHTML] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
-    
-    async function initializeBook() {
-      try {
-        console.log('Loading EPUB file...');
-        setIsLoading(true);
-        
-        // Add a small delay to ensure DOM is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Initialize book with explicit options for mobile
-        const b = ePub('/trimmed_book.epub', {
-          openAs: 'epub',
-          requestMethod: async (url: string) => {
-            const response = await fetch(url);
-            return response.blob();
-          },
-          requestCredentials: 'same-origin'
-        } as any);
-
-        // Wait for book to be ready
-        await b.ready;
-        
-        if (!mounted) return;
-        
-        console.log('EPUB loaded, processing spine...');
-        setBook(b);
-
-        // Get spine items
-        const items = (b.spine as any).spineItems;
-        
-        if (!items || items.length === 0) {
-          throw new Error('No spine items found in the EPUB file');
-        }
-
-        console.log(`Found ${items.length} chapters`);
-        setSpineItems(items);
-        
-        // Load saved state or set defaults
-        const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
-        const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
-        const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
-
-        if (savedHTML) {
-          console.log('Loading saved state from localStorage');
-          setContentHTML(savedHTML);
-          setFrom(savedFrom ? parseInt(savedFrom) : 0);
-          setTo(savedTo ? parseInt(savedTo) : 0);
-        } else {
-          console.log('No saved state, loading first two chapters by default');
-          const defaultFrom = 0;
-          const defaultTo = Math.min(1, items.length - 1);
-          
-          setFrom(defaultFrom);
-          setTo(defaultTo);
-          
-          // Load initial chapters after a delay
-          setTimeout(() => {
-            if (mounted) {
-              loadChapters();
-            }
-          }, 200);
-        }
-      } catch (err) {
-        console.error('Error initializing book:', err);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    initializeBook();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const loadChapters = useCallback(async () => {
     if (!book || !spineItems) {
       console.error('Book or spine items not initialized');
@@ -335,6 +255,107 @@ export default function Home() {
       console.error('Error saving to localStorage:', error);
     }
   }, [book, spineItems, from, to]);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    async function initializeBook() {
+      try {
+        console.log('Loading EPUB file...');
+        setIsLoading(true);
+        
+        // Add a small delay to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Initialize book with explicit options for mobile and static deployments
+        const b = ePub('/trimmed_book.epub', {
+          openAs: 'epub',
+          requestMethod: async (url: string) => {
+            try {
+              // First try to load from the static deployment path
+              const staticPath = url.startsWith('/') ? url : `/${url}`;
+              const response = await fetch(staticPath);
+              if (response.ok) {
+                return response.blob();
+              }
+              // Fallback to relative path
+              const fallbackResponse = await fetch(url);
+              return fallbackResponse.blob();
+            } catch (error) {
+              console.error('Error loading resource:', error);
+              // Try one more time with the full URL
+              const fullUrl = new URL(url, window.location.href).href;
+              const finalResponse = await fetch(fullUrl);
+              return finalResponse.blob();
+            }
+          },
+          requestCredentials: 'same-origin'
+        } as any);
+
+        // Wait for book to be ready
+        await b.ready;
+        
+        if (!mounted) return;
+        
+        console.log('EPUB loaded, processing spine...');
+        setBook(b);
+
+        // Get spine items with retry mechanism
+        let items;
+        try {
+          items = (b.spine as any).spineItems;
+          if (!items || items.length === 0) {
+            // Try alternative method
+            items = await b.loaded.spine;
+          }
+        } catch (error) {
+          console.error('Error getting spine items:', error);
+          items = [];
+        }
+        
+        if (!items || items.length === 0) {
+          throw new Error('No spine items found in the EPUB file');
+        }
+
+        console.log(`Found ${items.length} chapters`);
+        setSpineItems(items);
+        
+        // Load saved state or set defaults
+        const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
+        const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
+        const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
+
+        if (savedHTML && savedFrom && savedTo) {
+          console.log('Loading saved state from localStorage');
+          setContentHTML(savedHTML);
+          setFrom(savedFrom ? parseInt(savedFrom) : 0);
+          setTo(savedTo ? parseInt(savedTo) : 0);
+        } else {
+          console.log('No saved state, loading first two chapters by default');
+          const defaultFrom = 0;
+          const defaultTo = Math.min(1, items.length - 1);
+          
+          setFrom(defaultFrom);
+          setTo(defaultTo);
+          
+          // Load initial chapters immediately
+          loadChapters();
+        }
+      } catch (err) {
+        console.error('Error initializing book:', err);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    initializeBook();
+
+    return () => {
+      mounted = false;
+    };
+  }, [loadChapters]);
 
   // Save the current state to localStorage when component unmounts or tab is closed
   useEffect(() => {
