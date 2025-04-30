@@ -1,8 +1,24 @@
 // src/app/layout.tsx
 import './globals.css';
-import { metadata } from './metadata';
+import { Inter } from 'next/font/google';
+import ThemeProvider from './components/ThemeProvider';
 
-export { metadata };
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'ePub Reader',
+  description: 'A modern ePub reader with Edge read-aloud support',
+  metadataBase: new URL('https://your-site.netlify.app'),
+  openGraph: {
+    title: 'ePub Reader',
+    description: 'A modern ePub reader with Edge read-aloud support',
+    type: 'website',
+  },
+  other: {
+    'reader-mode': 'enable',
+    'edge-reading': 'enable',
+  },
+};
 
 export default function RootLayout({
   children,
@@ -10,17 +26,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-edge-reading="true">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="reader-mode" content="enable" />
+        <meta name="edge-reading" content="enable" />
+        <meta name="edge-read-aloud" content="enable" />
       </head>
-      <body>
-        <div className="progress-bar">
-          <div className="progress-bar-fill" style={{ width: '0%' }} />
-        </div>
-        <main className="reading-container">
+      <body className={inter.className} data-edge-readable="true">
+        <ThemeProvider>
           {children}
-        </main>
+        </ThemeProvider>
       </body>
     </html>
   );

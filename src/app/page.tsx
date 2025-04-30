@@ -368,6 +368,19 @@ export default function Home() {
     };
   }, [contentHTML, from, to]);
 
+  // Add meta tags for Edge compatibility
+  useEffect(() => {
+    // Add meta tag for Edge compatibility
+    const meta = document.createElement('meta');
+    meta.name = 'reader-mode';
+    meta.content = 'enable';
+    document.head.appendChild(meta);
+
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
+
   return (
     <div className="epub-reader" lang="en" role="document">
       <header className="reader-header">
@@ -388,11 +401,13 @@ export default function Home() {
             className="reader-main"
             role="main"
             aria-label="Book content"
+            data-edge-reading="true"
           >
             <article 
               className="reader-content"
               role="article"
               aria-label="Current chapters"
+              data-edge-readable="true"
             >
               <div
                 key={`content-${from}-${to}`}
@@ -401,6 +416,7 @@ export default function Home() {
                 role="document"
                 aria-label="Chapter text"
                 data-edge-read-aloud="true"
+                data-edge-reading-mode="true"
                 dangerouslySetInnerHTML={{ __html: contentHTML }}
               />
             </article>
