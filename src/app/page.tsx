@@ -19,52 +19,86 @@ export default function Home() {
   const [from, setFrom] = useState(0);
   const [to, setTo] = useState(0);
   const [contentHTML, setContentHTML] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      console.log('Loading EPUB file...');
-      // Use custom options to better handle non-standard EPUB files
-      const b = ePub('/trimmed_book.epub');
-      setBook(b);
+    let mounted = true;
+    
+    async function initializeBook() {
+      try {
+        console.log('Loading EPUB file...');
+        setIsLoading(true);
+        
+        // Add a small delay to ensure DOM is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Initialize book with explicit options for mobile
+        const b = ePub('/trimmed_book.epub', {
+          openAs: 'epub',
+          requestMethod: async (url: string) => {
+            const response = await fetch(url);
+            return response.blob();
+          },
+          requestCredentials: 'same-origin'
+        } as any);
 
-      b.ready.then(() => {
-        try {
-          console.log('EPUB loaded, processing spine...');
-          const items = (b.spine as any).spineItems;
-          console.log('Spine items:', items);
-          
-          if (items && items.length > 0) {
-            console.log(`Found ${items.length} chapters`);
-            setSpineItems(items);
-            
-            // Load from localStorage if available, otherwise use defaults
-            const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
-            const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
-            const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
+        // Wait for book to be ready
+        await b.ready;
+        
+        if (!mounted) return;
+        
+        console.log('EPUB loaded, processing spine...');
+        setBook(b);
 
-            if (savedHTML) {
-              console.log('Loading saved state from localStorage');
-              setContentHTML(savedHTML);
-              setFrom(savedFrom ? parseInt(savedFrom) : 0);
-              setTo(savedTo ? parseInt(savedTo) : 0);
-            } else {
-              // Set default values if no saved state
-              console.log('No saved state, using defaults');
-              setFrom(0);
-              setTo(items.length > 0 ? Math.min(2, items.length - 1) : 0); // Default to first 3 chapters or less
-            }
-          } else {
-            console.error('No spine items found in the EPUB file');
-          }
-        } catch (err) {
-          console.error('Error processing spine:', err);
+        // Get spine items
+        const items = (b.spine as any).spineItems;
+        
+        if (!items || items.length === 0) {
+          throw new Error('No spine items found in the EPUB file');
         }
-      }).catch(err => {
-        console.error('EPUB ready promise failed:', err);
-      });
-    } catch (err) {
-      console.error('Error loading EPUB file:', err);
+
+        console.log(`Found ${items.length} chapters`);
+        setSpineItems(items);
+        
+        // Load saved state or set defaults
+        const savedHTML = localStorage.getItem(STORAGE_KEYS.CONTENT);
+        const savedFrom = localStorage.getItem(STORAGE_KEYS.FROM);
+        const savedTo = localStorage.getItem(STORAGE_KEYS.TO);
+
+        if (savedHTML) {
+          console.log('Loading saved state from localStorage');
+          setContentHTML(savedHTML);
+          setFrom(savedFrom ? parseInt(savedFrom) : 0);
+          setTo(savedTo ? parseInt(savedTo) : 0);
+        } else {
+          console.log('No saved state, loading first two chapters by default');
+          const defaultFrom = 0;
+          const defaultTo = Math.min(1, items.length - 1);
+          
+          setFrom(defaultFrom);
+          setTo(defaultTo);
+          
+          // Load initial chapters after a delay
+          setTimeout(() => {
+            if (mounted) {
+              loadChapters();
+            }
+          }, 200);
+        }
+      } catch (err) {
+        console.error('Error initializing book:', err);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
     }
+
+    initializeBook();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const loadChapters = useCallback(async () => {
@@ -105,6 +139,35 @@ export default function Home() {
         return '';
       }
     };
+
+    // Function to clean and structure HTML for better readability
+    const structureHTML = (html: string): string => {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+
+      // Remove any script tags
+      const scripts = div.getElementsByTagName('script');
+      for (let i = scripts.length - 1; i >= 0; i--) {
+        scripts[i].remove();
+      }
+
+      // Remove existing titles/headers to prevent duplicates
+      const existingTitles = div.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      existingTitles.forEach(title => title.remove());
+
+      // Convert divs to paragraphs where appropriate
+      const divs = div.getElementsByTagName('div');
+      for (let i = divs.length - 1; i >= 0; i--) {
+        const div = divs[i];
+        if (!div.querySelector('div, p')) {
+          const p = document.createElement('p');
+          p.innerHTML = div.innerHTML;
+          div.parentNode?.replaceChild(p, div);
+        }
+      }
+
+      return div.innerHTML;
+    };
     
     // Clear existing content first
     setContentHTML('');
@@ -112,7 +175,10 @@ export default function Home() {
     // Small delay to ensure DOM is cleared
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    let combinedHTML = '';
+    let combinedHTML = `
+      <article class="book-content" lang="en">
+        <main class="book-main">
+    `;
     console.log('Loading chapters from', from, 'to', to);
 
     // Initialize rendition if it doesn't exist
@@ -160,7 +226,7 @@ export default function Home() {
         });
 
         let chapterHTML = '';
-        let chapterTitle = item.title || item.label || ``;
+        let chapterTitle = item.title || item.label || `Chapter ${index + 1}`;
 
         // Method 1: Try using book.rendition.display() first
         try {
@@ -221,13 +287,18 @@ export default function Home() {
 
         // If we got content, add it to our combined HTML
         if (chapterHTML) {
-          const formattedTitle = `<h2 class="chapter-title">${chapterTitle}</h2>`;
+          const structuredHTML = structureHTML(chapterHTML);
+          const chapterNum = index + 1;
           
           combinedHTML += `
-            <div class="chapter" data-chapter="${index}">
-              ${formattedTitle}
-              ${chapterHTML}
-            </div>
+            <section class="chapter" id="chapter-${chapterNum}">
+              <header>
+                <h2>Chapter ${chapterNum}</h2>
+              </header>
+              <div class="chapter-content">
+                ${structuredHTML}
+              </div>
+            </section>
           `;
           
           console.log(`Successfully processed chapter ${index}`);
@@ -241,6 +312,11 @@ export default function Home() {
         });
       }
     }
+
+    combinedHTML += `
+        </main>
+      </article>
+    `;
 
     // Update state with new content
     setContentHTML(combinedHTML);
@@ -284,27 +360,45 @@ export default function Home() {
   }, [contentHTML, from, to]);
 
   return (
-    <div className="min-h-screen" role="main">
-      <ThemeProvider
-        from={from}
-        to={to}
-        onFromChange={setFrom}
-        onToChange={setTo}
-        spineItems={spineItems}
-        onLoadChapters={loadChapters}
-      >
-        <div
-          key={`content-${from}-${to}`}
-          className="reading-area"
-          role="article"
-          aria-live="polite"
-          aria-atomic="true"
-          dangerouslySetInnerHTML={{ __html: contentHTML }}
-        />
-      </ThemeProvider>
+    <div className="epub-reader" lang="en">
+      <header className="reader-header">
+        <h1 className="sr-only">eBook Reader</h1>
+      </header>
+      {isLoading ? (
+        <div className="loading-indicator">Loading book...</div>
+      ) : (
+        <ThemeProvider
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+          spineItems={spineItems}
+          onLoadChapters={loadChapters}
+        >
+          <main 
+            className="reader-main"
+            role="main"
+            aria-label="Book content"
+          >
+            <article 
+              className="reader-content"
+              role="article"
+            >
+              <div
+                key={`content-${from}-${to}`}
+                className="reading-area"
+                lang="en"
+                role="document"
+                aria-label="Current chapter content"
+                dangerouslySetInnerHTML={{ __html: contentHTML }}
+              />
+            </article>
+          </main>
+        </ThemeProvider>
+      )}
     </div>
   );
 }
 
+// Changed from edge to nodejs runtime to help with Vercel deployment
 export const dynamic = 'force-static';
-export const runtime = 'edge';

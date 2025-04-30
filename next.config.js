@@ -1,25 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: process.env.VERCEL ? '/' : undefined,
-  },
-  // Keep this for handling ePub files in public directory
+  // Remove standalone output as it's causing issues with Vercel deployment
   webpack: (config) => {
     config.module.rules.push({
       test: /\.(epub)$/,
-      use: [
-        {
-          loader: 'file-loader',
-          options: {
-            name: '[name].[ext]',
-            publicPath: '/_next/static/files',
-            outputPath: 'static/files',
-          },
-        },
-      ],
+      type: 'asset/resource',
+      generator: {
+        filename: 'static/[name][ext]'
+      }
     });
     return config;
   },

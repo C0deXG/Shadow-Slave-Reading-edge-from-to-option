@@ -35,43 +35,112 @@ body {
   padding: 2rem 0;
 }
 
-/* Mobile-first approach */
+/* Reading area styles for better text detection */
 .reading-area {
-  padding: 1rem 0.5rem 8rem 0.5rem; /* Increased bottom padding for mobile controls */
-  font-size: 16px; /* Base font size for mobile */
+  padding: 0.5rem;
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  word-spacing: 0.05em;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
 }
 
 @media (min-width: 768px) {
   .reading-area {
-    padding: 1rem 2rem 6rem 2rem;
+    padding: 1rem 2rem;
     font-size: var(--book-font-size);
   }
 }
 
-/* Chapter styles */
-.chapter-block {
-  padding: calc(var(--chapter-spacing) / 2) calc(var(--book-side-padding) / 2);
+/* Chapter styles with semantic structure */
+.chapter {
+  margin-bottom: 3rem;
+  padding: 0 0.5rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
+.chapter header {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.chapter h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--book-text-color);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* Content styles */
+.chapter-content {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--book-text-color);
+  max-width: 40em;
+  margin: 0 auto;
+}
+
+.chapter-content p {
+  margin-bottom: 1.25rem;
+  text-align: left;
+  line-height: 1.6;
+  font-size: 1.125rem;
+}
+
+/* Desktop styles */
 @media (min-width: 768px) {
-  .chapter-block {
-    padding: var(--chapter-spacing) var(--book-side-padding);
+  .chapter {
+    padding: 0 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .chapter h2 {
+    font-size: 2rem;
+  }
+
+  .chapter-content {
+    font-size: var(--book-font-size);
+    line-height: var(--book-line-height);
+    max-width: 70ch;
+  }
+
+  .chapter-content p {
+    text-align: justify;
+    margin-bottom: 1.5rem;
+    line-height: 1.8;
+    font-size: var(--book-font-size);
   }
 }
 
-/* Chapter title styles */
-.custom-chapter-title {
-  font-size: 1.5rem;
-  line-height: 1.3;
-  margin: 1rem 0;
-  padding: 0 0.5rem;
-}
+/* Ensure text is readable on mobile */
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
 
-@media (min-width: 768px) {
-  .custom-chapter-title {
-    font-size: 2rem;
-    margin: 1.5rem 0;
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .chapter-content {
+    font-size: 1.125rem;
+    line-height: 1.6;
     padding: 0;
+  }
+
+  .chapter-content p {
+    margin-bottom: 1.25rem;
+    font-size: 1.125rem;
+    line-height: 1.6;
   }
 }
 
@@ -467,32 +536,56 @@ body {
   }
 }
 
-/* Chapter content optimization for mobile */
-.chapter-content {
-  font-size: 1rem;
-  line-height: 1.6;
-  padding: 0 0.5rem;
-}
-
-@media (min-width: 768px) {
-  .chapter-content {
-    font-size: var(--book-font-size);
-    line-height: var(--book-line-height);
-    padding: 0;
-  }
-}
-
-/* Ensure text is readable on mobile */
-.chapter-content p {
-  margin-bottom: 1rem;
-  text-align: left; /* Better for mobile reading */
-}
-
-@media (min-width: 768px) {
+/* Improve text contrast */
+@media (prefers-color-scheme: light) {
   .chapter-content p {
-    text-align: justify;
-    margin-bottom: 1.5rem;
+    color: #000000;
   }
+  
+  .chapter-title {
+    color: #000000;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .chapter-content p {
+    color: #ffffff;
+  }
+  
+  .chapter-title {
+    color: #ffffff;
+  }
+}
+
+/* Ensure proper spacing and structure */
+article[role="article"] {
+  max-width: 100ch;
+  margin: 0 auto;
+  padding: 0 1rem;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+section[role="region"] {
+  margin-bottom: 4rem;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Make text elements focusable */
+[role="text"],
+[role="heading"],
+[role="article"],
+[role="region"] {
+  outline: none;
+}
+
+[role="text"]:focus,
+[role="heading"]:focus,
+[role="article"]:focus,
+[role="region"]:focus {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
 }
 
 /* Add smooth touch scrolling */
@@ -905,4 +998,107 @@ html, body {
   padding: 0.5rem 1rem;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* Base structure */
+.epub-reader {
+  min-height: 100vh;
+  background: var(--book-bg-color);
+  padding-bottom: 6rem;
+  -webkit-text-size-adjust: 100%;
+}
+
+.reader-header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.reader-main {
+  max-width: 100ch;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.reader-content {
+  margin-bottom: 6rem;
+}
+
+/* Book content structure */
+.book-content {
+  max-width: 70ch;
+  margin: 0 auto;
+}
+
+.book-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.book-header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--book-text-color);
+}
+
+.book-main {
+  line-height: 1.8;
+}
+
+/* Chapter styling */
+.chapter {
+  margin-bottom: 4rem;
+  break-inside: avoid;
+}
+
+.chapter header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.chapter h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--book-text-color);
+  margin: 0;
+}
+
+.chapter-content {
+  font-family: "New York", ui-serif, Georgia, "Times New Roman", Times, serif;
+  font-size: var(--book-font-size);
+  line-height: var(--book-line-height);
+  color: var(--book-text-color);
+}
+
+/* Paragraph styling */
+.chapter-content p {
+  margin-bottom: 1.5rem;
+  line-height: 1.8;
+  max-width: 70ch;
+}
+
+/* Ensure text is readable */
+.chapter-content {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
